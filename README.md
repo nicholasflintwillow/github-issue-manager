@@ -7,7 +7,7 @@ A powerful CLI tool for creating and managing GitHub issues from markdown files 
 - **Markdown-driven Issue Creation**: Define issues in markdown files with YAML front matter
 - **Hierarchical Issue Relationships**: Support for parent-child issue relationships and Epic management
 - **GitHub Projects Integration**: Automatically add issues to GitHub Projects v2
-- **Issue Type Support**: Create issues with specific types (Bug, Task, Epic, etc.)
+- **Issue Type Support**: Create issues with specific types retrieved via GitHub's GraphQL API
 - **Dependency Resolution**: Automatically sorts and creates issues in the correct order based on dependencies
 - **Git Integration**: Automatically infers repository owner/name from local git configuration
 - **Label Management**: Support for issue labels
@@ -65,6 +65,26 @@ List and preview issues before creation:
 # List issues from specific folder
 ./gim list -f path/to/issues
 ```
+### Get Repository Information
+
+Display information about the GitHub repository, including available labels, issue types, and project fields:
+
+```bash
+# Get repository info (infers owner/repo from .git/config)
+./gim info
+
+# Specify repository explicitly
+./gim info -o owner-name -r repo-name
+```
+
+The `info` command retrieves and displays repository metadata in JSON format, which can be useful for:
+- Understanding available labels for issue creation
+- Identifying issue types configured in the repository (retrieved via GitHub's GraphQL API)
+- Discovering project fields for GitHub Projects v2 integration
+
+The command now only outputs clean JSON without any additional debug information, making it suitable for parsing by other tools. Issue types are retrieved directly from GitHub's GraphQL API rather than inferring them from template files.
+
+If not specified via flags, the command will attempt to infer the repository owner and name from the local `.git/config` file.
 ### Generate Example Issue Files
 
 Generate sample markdown issue files with comprehensive front matter fields:
@@ -206,8 +226,23 @@ Uses GitHub's GraphQL API for efficient operations including:
 
 ### Authentication
 Supports multiple authentication methods:
-- `GITHUB_TOKEN` environment variable
-- GitHub CLI hosts configuration (`~/.config/gh/hosts.yml`)
+
+1. **Environment Variable**: Set the `GITHUB_TOKEN` environment variable with a personal access token
+2. **GitHub CLI**: Uses credentials from the GitHub CLI (`gh`) if available, reading from `~/.config/gh/hosts.yml`
+
+The tool will first check for the `GITHUB_TOKEN` environment variable. If not found, it will attempt to read credentials from the GitHub CLI configuration file.
+
+For the GitHub CLI approach, ensure you have the GitHub CLI installed and authenticated:
+```bash
+gh auth login
+```
+
+For personal access tokens, you need to create a token with the following permissions:
+- `repo` scope for repository access
+- `read:project` scope for project field access
+- `issues` scope for issue management
+
+For detailed instructions on creating a personal access token, see [GitHub's documentation](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens).
 
 ## Examples
 

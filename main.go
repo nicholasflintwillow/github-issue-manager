@@ -3,6 +3,7 @@ package main
 import (
 	"github-issue-manager/cmd/create"
 	"github-issue-manager/cmd/examples"
+	"github-issue-manager/cmd/info"
 	"github-issue-manager/cmd/list"
 	"github-issue-manager/pkg/logger"
 
@@ -31,5 +32,6 @@ func main() {
 	rootCmd.AddCommand(list.Cmd)
 	rootCmd.AddCommand(create.Cmd)
 	rootCmd.AddCommand(examples.Cmd)
+	rootCmd.AddCommand(info.Cmd)
 	rootCmd.Execute()
 }

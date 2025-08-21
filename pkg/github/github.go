@@ -27,6 +27,31 @@ type IssueResult struct {
 	Err    error
 }
 
+// Label represents a GitHub label.
+type Label struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// IssueType represents a GitHub issue type.
+type IssueType struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// ProjectField represents a GitHub project field.
+type ProjectField struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// RepositoryInfo holds information about a GitHub repository.
+type RepositoryInfo struct {
+	Labels        []Label        `json:"labels"`
+	IssueTypes    []IssueType    `json:"issueTypes"`
+	ProjectFields []ProjectField `json:"projectFields"`
+}
+
 // OPTIONAL: ensure your issue model has a Type field.
 // type Issue struct {
 //   ...
@@ -185,6 +210,132 @@ func (c *Client) CreateIssues(ctx context.Context, owner, repo string, issues []
 	}
 
 	fmt.Printf("Created %d issues successfully.\n", len(createdIssues))
+}
+
+// GetRepositoryInfo retrieves repository information including labels, issue types, and project fields.
+func (c *Client) GetRepositoryInfo(ctx context.Context, owner, repo string) (*RepositoryInfo, error) {
+	// First, get repository information including labels
+	repoQuery := `
+		query($owner: String!, $name: String!) {
+			repository(owner: $owner, name: $name) {
+				labels(first: 100) {
+					nodes {
+						id
+						name
+					}
+				}
+			}
+		}
+	`
+
+	// Prepare the request for repository info
+	req := graphql.NewRequest(repoQuery)
+	req.Var("owner", owner)
+	req.Var("name", repo)
+
+	// Get the token and set the Authorization header
+	token, err := c.getToken()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get GitHub token: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	// Define a struct to hold the repository response
+	var repoData struct {
+		Repository struct {
+			Labels struct {
+				Nodes []Label `json:"nodes"`
+			} `json:"labels"`
+		} `json:"repository"`
+	}
+
+	// Execute the repository request
+	if err := c.GraphQL.Run(ctx, req, &repoData); err != nil {
+		return nil, fmt.Errorf("failed to execute repository GraphQL query: %w", err)
+	}
+
+	// Get issue types using GraphQL
+	issueTypes, err := c.GetIssueTypes(ctx, owner, repo)
+	if err != nil {
+		// If we can't get issue types via GraphQL, provide some defaults
+		commonTypes := []string{"Bug", "Feature", "Task", "Epic", "Documentation", "Enhancement"}
+		issueTypes = make([]IssueType, len(commonTypes))
+		for i, typeName := range commonTypes {
+			issueTypes[i] = IssueType{
+				ID:   fmt.Sprintf("issue-type-%s", strings.ToLower(typeName)),
+				Name: typeName,
+			}
+		}
+	}
+
+	// Try to get organization projects (this might fail if it's not an organization)
+	var projectFields []ProjectField
+	orgQuery := `
+		query($owner: String!) {
+			organization(login: $owner) {
+				projectsV2(first: 100) {
+					nodes {
+						id
+						title
+						fields(first: 100) {
+							nodes {
+								... on ProjectV2Field {
+									id
+									name
+								}
+								... on ProjectV2IterationField {
+									id
+									name
+								}
+								... on ProjectV2SingleSelectField {
+									id
+									name
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	`
+
+	orgReq := graphql.NewRequest(orgQuery)
+	orgReq.Var("owner", owner)
+	orgReq.Header.Set("Authorization", "Bearer "+token)
+
+	var orgData struct {
+		Organization struct {
+			ProjectsV2 struct {
+				Nodes []struct {
+					ID     string `json:"id"`
+					Title  string `json:"title"`
+					Fields struct {
+						Nodes []ProjectField `json:"nodes"`
+					} `json:"fields"`
+				} `json:"nodes"`
+			} `json:"projectsV2"`
+		} `json:"organization"`
+	}
+
+	// Execute the organization request (don't fail if this doesn't work)
+	if err := c.GraphQL.Run(ctx, orgReq, &orgData); err != nil {
+		logger.Debug("Failed to query organization projects (this is normal for personal repositories)", "owner", owner, "error", err)
+		// Don't return error here, just log it and continue with empty project fields
+	} else {
+		// Flatten project fields from organization-level projects
+		for _, project := range orgData.Organization.ProjectsV2.Nodes {
+			projectFields = append(projectFields, project.Fields.Nodes...)
+		}
+	}
+
+	// Construct the RepositoryInfo
+	repoInfo := &RepositoryInfo{
+		Labels:        repoData.Repository.Labels.Nodes,
+		IssueTypes:    issueTypes,
+		ProjectFields: projectFields,
+	}
+
+	return repoInfo, nil
 }
 
 // ResolveIssueNodeID resolves an issue number to its GraphQL node ID using GraphQL.
@@ -1060,4 +1211,43 @@ func (c *Client) ValidateProjectID(ctx context.Context, owner string, project st
 	}
 
 	return resp.Node.ID != "", nil
+
+}
+
+// GetIssueTypes retrieves all issue types for a repository using GraphQL.
+func (c *Client) GetIssueTypes(ctx context.Context, owner, repo string) ([]IssueType, error) {
+	token, err := c.getToken()
+	if err != nil {
+		return nil, err
+	}
+
+	req := graphql.NewRequest(`
+		query($owner: String!, $name: String!) {
+			repository(owner: $owner, name: $name) {
+				issueTypes(first: 100) {
+					nodes {
+						id
+						name
+					}
+				}
+			}
+		}
+	`)
+	req.Var("owner", owner)
+	req.Var("name", repo)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	var out struct {
+		Repository struct {
+			IssueTypes struct {
+				Nodes []IssueType `json:"nodes"`
+			} `json:"issueTypes"`
+		} `json:"repository"`
+	}
+
+	if err := c.GraphQL.Run(ctx, req, &out); err != nil {
+		return nil, fmt.Errorf("failed to execute issue types GraphQL query: %w", err)
+	}
+
+	return out.Repository.IssueTypes.Nodes, nil
 }
