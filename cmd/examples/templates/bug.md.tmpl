@@ -1,0 +1,55 @@
+---
+title: "{{.Title}}"
+project: "{{.Project}}"
+type: "Bug"
+status: "{{.Status}}"
+labels: "{{.Labels}}"
+{{if .Parent}}parent: "{{.Parent}}"{{end}}
+---
+## Description
+{{.Description}}
+
+## Steps to Reproduce
+{{range $i, $step := .ReproSteps}}{{add $i 1}}. {{$step}}
+{{end}}
+
+**Expected Result:** {{.ExpectedResult}}
+**Actual Result:** {{.ActualResult}}
+
+## Environment
+{{range .Environment}}- {{.}}
+{{end}}
+
+{{if .ErrorDetails}}## Error Details
+{{range .ErrorDetails}}- {{.}}
+{{end}}
+{{end}}
+
+{{if .InvestigationNotes}}## Investigation Notes
+{{range .InvestigationNotes}}- {{.}}
+{{end}}
+{{end}}
+
+## Impact
+- **Severity:** {{.Severity}}
+- **Priority:** {{.Priority}}
+- **Affected Users:** {{.AffectedUsers}}
+- **Business Impact:** {{.BusinessImpact}}
+
+{{if .Workaround}}## Workaround
+{{.Workaround}}
+{{end}}
+
+{{if .RootCause}}## Root Cause Analysis
+{{range .RootCause}}- {{.}}
+{{end}}
+{{end}}
+
+{{if .FixDescription}}## Fix Description
+{{range $i, $fix := .FixDescription}}{{add $i 1}}. {{$fix}}
+{{end}}
+{{end}}
+
+## Testing Strategy
+{{range .TestingStrategy}}- {{.}}
+{{end}}

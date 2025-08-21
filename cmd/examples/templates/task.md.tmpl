@@ -1,0 +1,33 @@
+---
+title: "{{.Title}}"
+project: "{{.Project}}"
+type: "Task"
+status: "{{.Status}}"
+labels: "{{.Labels}}"
+{{if .Parent}}parent: "{{.Parent}}"{{end}}
+---
+## Description
+{{.Description}}
+
+## Acceptance Criteria
+{{range .AcceptanceCriteria}}- [ ] {{.}}
+{{end}}
+
+## Implementation Details
+{{range .ImplementationDetails}}- {{.}}
+{{end}}
+
+## Technical Requirements
+{{range .TechnicalRequirements}}- {{.}}
+{{end}}
+
+## Dependencies
+{{range .Dependencies}}- {{.}}
+{{end}}
+
+## Estimated Time
+{{.Timeline}}
+
+## Testing Strategy
+{{range .TestingStrategy}}- {{.}}
+{{end}}

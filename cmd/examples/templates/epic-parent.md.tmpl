@@ -1,0 +1,30 @@
+---
+title: "{{.Title}}"
+project: "{{.Project}}"
+type: "Epic"
+status: "{{.Status}}"
+labels: "{{.Labels}}"
+{{if .Parent}}parent: "{{.Parent}}"{{end}}
+---
+## Description
+{{.Description}}
+
+This epic encompasses all {{.Domain}}-related features and serves as the parent for multiple tasks and features.
+
+## Acceptance Criteria
+{{range .AcceptanceCriteria}}- [ ] {{.}}
+{{end}}
+
+## Implementation Details
+{{range .ImplementationDetails}}- {{.}}
+{{end}}
+
+## Dependencies
+{{range .Dependencies}}- {{.}}
+{{end}}
+
+## Estimated Timeline
+{{.Timeline}}
+
+## Child Issues
+This epic contains multiple tasks, bugs, and features that will be linked as child issues.

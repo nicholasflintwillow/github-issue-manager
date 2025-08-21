@@ -1,0 +1,25 @@
+---
+title: "{{.Title}}"
+project: "{{.Project}}"
+type: "Epic"
+status: "{{.Status}}"
+labels: "{{.Labels}}"
+parent: "{{.Parent}}"
+---
+## Description
+{{.Description}}
+
+## Acceptance Criteria
+{{range .AcceptanceCriteria}}- [ ] {{.}}
+{{end}}
+
+## Implementation Details
+{{range .ImplementationDetails}}- {{.}}
+{{end}}
+
+## Dependencies
+{{range .Dependencies}}- {{.}}
+{{end}}
+
+## Estimated Timeline
+{{.Timeline}}
