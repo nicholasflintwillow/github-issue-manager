@@ -65,6 +65,32 @@ List and preview issues before creation:
 # List issues from specific folder
 ./gim list -f path/to/issues
 ```
+### Generate Example Issue Files
+
+Generate sample markdown issue files with comprehensive front matter fields:
+
+```bash
+# Generate all example types in 'examples' directory
+./gim examples
+
+# Generate specific issue type
+./gim examples --type bug
+./gim examples --type epic
+./gim examples --type task
+./gim examples --type feature
+
+# Specify custom output directory
+./gim examples --output my-examples
+
+# Generate with custom field values
+./gim examples --type bug --title "Custom Bug Title" --severity "High"
+```
+
+Available issue types:
+- `bug`: Bug report with reproduction steps and investigation fields
+- `epic`: Epic issue for large features or initiatives
+- `task`: Development task with implementation details
+- `feature`: Feature request with design and technical requirements
 
 ### Issue Markdown Format
 
@@ -90,13 +116,70 @@ Your issue description goes here.
 
 ### Front Matter Fields
 
+#### Core Fields (All Issue Types)
 - `title`: Issue title (required)
-- `type`: Issue type (Epic, Task, Bug, Feature, etc.)
 - `project`: GitHub Project name to add the issue to
-- `status`: Issue status
+- `status`: Issue status (e.g., "open", "todo", "in-progress", "done")
 - `labels`: Comma-separated list of labels
 - `parent`: Title of parent issue for hierarchical relationships
 - `id`: GitHub issue number (auto-populated after creation)
+
+#### Bug-Specific Fields
+- `repro-steps`: Array of reproduction steps
+- `expected-result`: Expected behavior description
+- `actual-result`: Actual behavior observed
+- `severity`: Bug severity level (e.g., "Critical", "High", "Medium", "Low")
+- `priority`: Issue priority (e.g., "Urgent", "High", "Medium", "Low")
+- `affected-users`: Description of affected user groups
+- `business-impact`: Business impact description
+- `workaround`: Available workaround description
+- `environment`: Array of environment details
+- `error-details`: Array of error information
+- `investigation-notes`: Array of investigation findings
+- `root-cause`: Array of root cause analysis items
+- `fix-description`: Structured fix description with indexed items
+
+#### Development Fields (Tasks, Features, Epics)
+- `implementation-details`: Array of implementation notes
+- `technical-requirements`: Array of technical specifications
+- `testing-strategy`: Array of testing approach items
+- `design-requirements`: Array of design specifications (features)
+
+#### Example Front Matter
+```yaml
+---
+title: "Fix user authentication timeout"
+project: "Auth Team"
+status: "open"
+labels: "bug, authentication, high-priority"
+---
+```
+
+### Using the Examples Command
+
+Generate comprehensive example files to understand all available fields:
+
+```bash
+# Generate all example types
+./gim examples
+
+# Generate a specific bug example with custom values
+./gim examples --type bug --title "Login Page Crash" --severity "Critical" --priority "Urgent"
+```
+
+This creates example files in the `examples/` directory showing all supported front matter fields for each issue type.
+```
+---
+severity: "High"
+priority: "Urgent"
+repro-steps:
+  - "Log into the application"
+  - "Wait for 30 minutes without activity"
+  - "Attempt to perform an action"
+expected-result: "User should be prompted to re-authenticate"
+actual-result: "Application throws an error and crashes"
+---
+```
 
 ## Architecture
 
@@ -152,15 +235,3 @@ parent: "Phase 0: Planning and Setup"
 project: "Infrastructure Team"
 ---
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-MIT License - see LICENSE file for details.

@@ -9,19 +9,6 @@ labels: "{{.Labels}}"
 ## Description
 {{.Description}}
 
-## User Story
-**As a** {{.UserStory.AsA}}
-**I want** {{.UserStory.IWant}}
-**So that** {{.UserStory.SoThat}}
-
-## Acceptance Criteria
-{{range .AcceptanceCriteria}}- [ ] {{.}}
-{{end}}
-
-## Business Value
-{{range .BusinessValue}}- {{.}}
-{{end}}
-
 ## Implementation Details
 {{range .ImplementationDetails}}- {{.}}
 {{end}}
@@ -34,17 +21,6 @@ labels: "{{.Labels}}"
 {{range .DesignRequirements}}- {{.}}
 {{end}}
 {{end}}
-
-## Dependencies
-{{range .Dependencies}}- {{.}}
-{{end}}
-
-## Success Metrics
-{{range .SuccessMetrics}}- {{.}}
-{{end}}
-
-## Estimated Timeline
-{{.Timeline}}
 
 ## Testing Strategy
 {{range .TestingStrategy}}- {{.}}

@@ -9,10 +9,6 @@ labels: "{{.Labels}}"
 ## Description
 {{.Description}}
 
-## Acceptance Criteria
-{{range .AcceptanceCriteria}}- [ ] {{.}}
-{{end}}
-
 ## Implementation Details
 {{range .ImplementationDetails}}- {{.}}
 {{end}}
@@ -20,13 +16,6 @@ labels: "{{.Labels}}"
 ## Technical Requirements
 {{range .TechnicalRequirements}}- {{.}}
 {{end}}
-
-## Dependencies
-{{range .Dependencies}}- {{.}}
-{{end}}
-
-## Estimated Time
-{{.Timeline}}
 
 ## Testing Strategy
 {{range .TestingStrategy}}- {{.}}

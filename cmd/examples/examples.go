@@ -17,6 +17,38 @@ var templatesFS embed.FS
 var outputDir string
 var issueType string
 
+// Flag variables for IssueData fields
+var (
+	// String fields
+	flagTitle          string
+	flagProject        string
+	flagStatus         string
+	flagLabels         string
+	flagParent         string
+	flagDescription    string
+	flagExpectedResult string
+	flagActualResult   string
+	flagSeverity       string
+	flagPriority       string
+	flagAffectedUsers  string
+	flagBusinessImpact string
+	flagWorkaround     string
+
+	// String slice fields
+	flagImplementationDetails []string
+	flagTechnicalRequirements []string
+	flagTestingStrategy       []string
+	flagDesignRequirements    []string
+	flagReproSteps            []string
+	flagEnvironment           []string
+	flagErrorDetails          []string
+	flagInvestigationNotes    []string
+	flagRootCause             []string
+
+	// Special field for FixDescription
+	flagFixDescription string
+)
+
 var Cmd = &cobra.Command{
 	Use:   "examples",
 	Short: "Generate example issue files with all available fields",
@@ -33,33 +65,226 @@ var Cmd = &cobra.Command{
 func init() {
 	Cmd.Flags().StringVarP(&outputDir, "output", "o", "examples", "Output directory for example files")
 	Cmd.Flags().StringVarP(&issueType, "type", "t", "", "Generate example for specific type (epic, task, bug, feature)")
+
+	// String field flags
+	Cmd.Flags().StringVarP(&flagTitle, "title", "", "", "Issue title")
+	Cmd.Flags().StringVarP(&flagProject, "project", "p", "", "Project name")
+	Cmd.Flags().StringVarP(&flagStatus, "status", "s", "", "Issue status")
+	Cmd.Flags().StringVarP(&flagLabels, "labels", "l", "", "Issue labels (comma-separated)")
+	Cmd.Flags().StringVarP(&flagParent, "parent", "", "", "Parent issue title")
+	Cmd.Flags().StringVarP(&flagDescription, "description", "d", "", "Issue description")
+	Cmd.Flags().StringVarP(&flagExpectedResult, "expected-result", "", "", "Expected result for bugs")
+	Cmd.Flags().StringVarP(&flagActualResult, "actual-result", "", "", "Actual result for bugs")
+	Cmd.Flags().StringVarP(&flagSeverity, "severity", "", "", "Bug severity")
+	Cmd.Flags().StringVarP(&flagPriority, "priority", "", "", "Issue priority")
+	Cmd.Flags().StringVarP(&flagAffectedUsers, "affected-users", "", "", "Affected users description")
+	Cmd.Flags().StringVarP(&flagBusinessImpact, "business-impact", "", "", "Business impact description")
+	// String slice field flags
+	Cmd.Flags().StringArrayVarP(&flagImplementationDetails, "implementation-details", "", []string{}, "Implementation details (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagTechnicalRequirements, "technical-requirements", "", []string{}, "Technical requirements (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagTestingStrategy, "testing-strategy", "", []string{}, "Testing strategy items (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagDesignRequirements, "design-requirements", "", []string{}, "Design requirements (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagReproSteps, "repro-steps", "", []string{}, "Reproduction steps (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagEnvironment, "environment", "", []string{}, "Environment details (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagErrorDetails, "error-details", "", []string{}, "Error details (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagInvestigationNotes, "investigation-notes", "", []string{}, "Investigation notes (can be used multiple times)")
+	Cmd.Flags().StringArrayVarP(&flagRootCause, "root-cause", "", []string{}, "Root cause items (can be used multiple times)")
+
+	// Special field for FixDescription
+	Cmd.Flags().StringVarP(&flagFixDescription, "fix-description", "", "", "Fix description in format '0:Description1;1:Description2'")
+	Cmd.Flags().StringVarP(&flagWorkaround, "workaround", "", "", "Workaround description")
+}
+
+// parseFixDescription parses the fix description flag format "0:Description1;1:Description2"
+func parseFixDescription(input string) []struct {
+	Index       int
+	Description string
+} {
+	var result []struct {
+		Index       int
+		Description string
+	}
+
+	if input == "" {
+		return result
+	}
+
+	parts := strings.Split(input, ";")
+	for _, part := range parts {
+		if colonIndex := strings.Index(part, ":"); colonIndex > 0 {
+			indexStr := part[:colonIndex]
+			description := part[colonIndex+1:]
+			if index := 0; true {
+				if _, err := fmt.Sscanf(indexStr, "%d", &index); err == nil {
+					result = append(result, struct {
+						Index       int
+						Description string
+					}{Index: index, Description: description})
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+// createDefaultIssueData creates an IssueData struct with default example values
+func createDefaultIssueData(issueType string) IssueData {
+	switch strings.ToLower(issueType) {
+	case "epic":
+		return IssueData{
+			Title:       "Example Epic Title",
+			Project:     "Example Project",
+			Status:      "planning",
+			Labels:      "epic, example",
+			Description: "This is an example epic description with comprehensive details about the feature or initiative.",
+			ImplementationDetails: []string{
+				"Define architecture and technical approach",
+				"Break down into smaller tasks",
+				"Establish acceptance criteria",
+			},
+			TechnicalRequirements: []string{
+				"Scalable design for future growth",
+				"Performance requirements defined",
+				"Security considerations addressed",
+			},
+			TestingStrategy: []string{
+				"Unit testing for all components",
+				"Integration testing strategy",
+				"User acceptance testing plan",
+			},
+		}
+	case "task":
+		return IssueData{
+			Title:       "Example Task Title",
+			Project:     "Example Project",
+			Status:      "todo",
+			Labels:      "task, example",
+			Description: "This is an example task description with specific implementation details.",
+			ImplementationDetails: []string{
+				"Implement core functionality",
+				"Add error handling",
+				"Write documentation",
+			},
+			TechnicalRequirements: []string{
+				"Response time < 500ms",
+				"Handle concurrent requests",
+				"Follow coding standards",
+			},
+			TestingStrategy: []string{
+				"Unit tests for business logic",
+				"Integration tests for APIs",
+				"Performance testing",
+			},
+		}
+	case "bug":
+		return IssueData{
+			Title:          "Example Bug Title",
+			Project:        "Example Project",
+			Status:         "open",
+			Labels:         "bug, example",
+			Description:    "This is an example bug description with reproduction steps and expected behavior.",
+			ExpectedResult: "The feature should work as designed",
+			ActualResult:   "The feature exhibits unexpected behavior",
+			Severity:       "Medium",
+			Priority:       "High",
+			AffectedUsers:  "Users experiencing the specific workflow",
+			BusinessImpact: "Moderate impact on user experience",
+			Workaround:     "Temporary workaround available",
+			ReproSteps: []string{
+				"Navigate to the affected page",
+				"Perform the specific action",
+				"Observe the unexpected behavior",
+			},
+			Environment: []string{
+				"Browser: Chrome, Firefox",
+				"OS: Windows, macOS",
+				"Version: Latest",
+			},
+			ErrorDetails: []string{
+				"Console shows no errors",
+				"Network requests complete successfully",
+				"UI state inconsistent",
+			},
+			InvestigationNotes: []string{
+				"Issue appears to be timing-related",
+				"Occurs more frequently under load",
+				"May be related to recent changes",
+			},
+			RootCause: []string{
+				"Race condition in state management",
+				"Insufficient validation",
+			},
+			FixDescription: []struct {
+				Index       int
+				Description string
+			}{
+				{0, "Add proper state synchronization"},
+				{1, "Implement validation checks"},
+				{2, "Add error handling"},
+			},
+			TestingStrategy: []string{
+				"Reproduce the issue consistently",
+				"Test fix in multiple environments",
+				"Verify no regression in related features",
+			},
+		}
+	case "feature":
+		return IssueData{
+			Title:       "Example Feature Title",
+			Project:     "Example Project",
+			Status:      "backlog",
+			Labels:      "feature, example, enhancement",
+			Description: "This is an example feature description with user value and implementation approach.",
+			ImplementationDetails: []string{
+				"Design user interface components",
+				"Implement backend API endpoints",
+				"Add data persistence layer",
+			},
+			TechnicalRequirements: []string{
+				"Mobile-responsive design",
+				"Accessibility compliance",
+				"Performance optimization",
+			},
+			DesignRequirements: []string{
+				"Consistent with design system",
+				"User-friendly interface",
+				"Clear visual hierarchy",
+			},
+			TestingStrategy: []string{
+				"Usability testing with target users",
+				"A/B testing for feature adoption",
+				"Performance testing under load",
+			},
+		}
+	default:
+		// Default to task-like structure
+		return IssueData{
+			Title:       "Example Issue Title",
+			Project:     "Example Project",
+			Status:      "todo",
+			Labels:      "example",
+			Description: "This is an example issue description.",
+		}
+	}
 }
 
 // Template data structures
-type UserStory struct {
-	AsA    string
-	IWant  string
-	SoThat string
-}
 
 type IssueData struct {
-	Title                 string
-	Project               string
-	Status                string
-	Labels                string
-	Parent                string
-	Description           string
-	Domain                string
-	AcceptanceCriteria    []string
+	Title       string
+	Project     string
+	Status      string
+	Labels      string
+	Parent      string
+	Description string
+
 	ImplementationDetails []string
 	TechnicalRequirements []string
-	Dependencies          []string
-	Timeline              string
-	TestingStrategy       []string
-	UserStory             UserStory
-	BusinessValue         []string
-	SuccessMetrics        []string
-	DesignRequirements    []string
+
+	TestingStrategy []string
+
+	DesignRequirements []string
 
 	// Bug-specific fields
 	ReproSteps         []string
@@ -106,6 +331,84 @@ func generateAllExamples() {
 	listGeneratedFiles()
 }
 
+// applyFlagOverrides applies command-line flag values to the IssueData struct
+func applyFlagOverrides(data *IssueData) {
+	// Apply string field overrides
+	if flagTitle != "" {
+		data.Title = flagTitle
+	}
+	if flagProject != "" {
+		data.Project = flagProject
+	}
+	if flagStatus != "" {
+		data.Status = flagStatus
+	}
+	if flagLabels != "" {
+		data.Labels = flagLabels
+	}
+	if flagParent != "" {
+		data.Parent = flagParent
+	}
+	if flagDescription != "" {
+		data.Description = flagDescription
+	}
+	if flagExpectedResult != "" {
+		data.ExpectedResult = flagExpectedResult
+	}
+	if flagActualResult != "" {
+		data.ActualResult = flagActualResult
+	}
+	if flagSeverity != "" {
+		data.Severity = flagSeverity
+	}
+	if flagPriority != "" {
+		data.Priority = flagPriority
+	}
+	if flagAffectedUsers != "" {
+		data.AffectedUsers = flagAffectedUsers
+	}
+	if flagBusinessImpact != "" {
+		data.BusinessImpact = flagBusinessImpact
+	}
+	if flagWorkaround != "" {
+		data.Workaround = flagWorkaround
+	}
+
+	// Apply string slice field overrides
+	if len(flagImplementationDetails) > 0 {
+		data.ImplementationDetails = flagImplementationDetails
+	}
+	if len(flagTechnicalRequirements) > 0 {
+		data.TechnicalRequirements = flagTechnicalRequirements
+	}
+	if len(flagTestingStrategy) > 0 {
+		data.TestingStrategy = flagTestingStrategy
+	}
+	if len(flagDesignRequirements) > 0 {
+		data.DesignRequirements = flagDesignRequirements
+	}
+	if len(flagReproSteps) > 0 {
+		data.ReproSteps = flagReproSteps
+	}
+	if len(flagEnvironment) > 0 {
+		data.Environment = flagEnvironment
+	}
+	if len(flagErrorDetails) > 0 {
+		data.ErrorDetails = flagErrorDetails
+	}
+	if len(flagInvestigationNotes) > 0 {
+		data.InvestigationNotes = flagInvestigationNotes
+	}
+	if len(flagRootCause) > 0 {
+		data.RootCause = flagRootCause
+	}
+
+	// Apply FixDescription override
+	if flagFixDescription != "" {
+		data.FixDescription = parseFixDescription(flagFixDescription)
+	}
+}
+
 func generateSingleExample(issueType string) {
 	fmt.Printf("Generating example for type: %s\n", issueType)
 
@@ -115,21 +418,36 @@ func generateSingleExample(issueType string) {
 		return
 	}
 
+	// Create default IssueData with example values
+	data := createDefaultIssueData(issueType)
+
+	// Apply flag overrides to the default data
+	applyFlagOverrides(&data)
+
+	// Determine template and output filename based on issue type
+	var templatePath, outputFilename string
 	switch strings.ToLower(issueType) {
 	case "epic":
-		generateEpicExamples()
+		templatePath = "templates/epic-parent.md.tmpl"
+		outputFilename = "epic-example.md"
 	case "task":
-		generateTaskExamples()
+		templatePath = "templates/task.md.tmpl"
+		outputFilename = "task-example.md"
 	case "bug":
-		generateBugExamples()
+		templatePath = "templates/bug.md.tmpl"
+		outputFilename = "bug-example.md"
 	case "feature":
-		generateFeatureExamples()
+		templatePath = "templates/feature.md.tmpl"
+		outputFilename = "feature-example.md"
 	default:
 		fmt.Printf("Unknown issue type: %s. Available types: epic, task, bug, feature\n", issueType)
 		return
 	}
 
-	fmt.Printf("Example file(s) for %s generated successfully in %s/\n", issueType, outputDir)
+	// Generate the markdown file using the populated data
+	generateFromTemplate(templatePath, outputFilename, data)
+
+	fmt.Printf("Example file for %s generated successfully in %s/\n", issueType, outputDir)
 }
 
 func generateEpicExamples() {
@@ -140,15 +458,7 @@ func generateEpicExamples() {
 		Status:      "in-progress",
 		Labels:      "epic, high-priority, authentication",
 		Description: "Implement a comprehensive user authentication system including login, registration, password reset, multi-factor authentication, and user session management.",
-		Domain:      "authentication",
-		AcceptanceCriteria: []string{
-			"Users can register with email and password",
-			"Users can login with email and password",
-			"Password reset functionality via email",
-			"Multi-factor authentication support",
-			"Session management and logout",
-			"Security audit and penetration testing completed",
-		},
+
 		ImplementationDetails: []string{
 			"Use JWT for session management",
 			"Implement OAuth2 for third-party authentication",
@@ -156,12 +466,6 @@ func generateEpicExamples() {
 			"Rate limiting for authentication endpoints",
 			"Comprehensive logging and monitoring",
 		},
-		Dependencies: []string{
-			"Database schema design",
-			"Email service integration",
-			"Security review approval",
-		},
-		Timeline: "8-10 weeks",
 	}
 
 	// Child Epic data
@@ -172,25 +476,13 @@ func generateEpicExamples() {
 		Labels:      "epic, security, mfa",
 		Parent:      "User Authentication System Epic",
 		Description: "Implement multi-factor authentication (MFA) capabilities as part of the broader authentication system. This includes SMS, email, and authenticator app support.",
-		AcceptanceCriteria: []string{
-			"SMS-based MFA",
-			"Email-based MFA",
-			"TOTP authenticator app support",
-			"Backup codes generation and validation",
-			"MFA enrollment and management UI",
-		},
+
 		ImplementationDetails: []string{
 			"Integration with SMS providers (Twilio, AWS SNS)",
 			"TOTP library integration",
 			"Secure backup code generation",
 			"User-friendly enrollment process",
 		},
-		Dependencies: []string{
-			"Parent epic: User Authentication System Epic",
-			"SMS service provider setup",
-			"Email service integration",
-		},
-		Timeline: "4-5 weeks",
 	}
 
 	generateFromTemplate("templates/epic-parent.md.tmpl", "epic-parent-example.md", parentEpicData)
@@ -206,16 +498,7 @@ func generateTaskExamples() {
 		Labels:      "backend, api, registration",
 		Parent:      "User Authentication System Epic",
 		Description: "Create RESTful API endpoints for user registration including email validation, password strength requirements, and duplicate email checking.",
-		AcceptanceCriteria: []string{
-			"POST /api/auth/register endpoint created",
-			"Email format validation",
-			"Password strength validation (min 8 chars, special chars, numbers)",
-			"Duplicate email prevention",
-			"Email verification workflow",
-			"Proper error handling and response codes",
-			"Unit tests with >90% coverage",
-			"API documentation updated",
-		},
+
 		ImplementationDetails: []string{
 			"Use Express.js framework",
 			"Mongoose for MongoDB integration",
@@ -229,12 +512,7 @@ func generateTaskExamples() {
 			"Secure password storage",
 			"GDPR compliant data handling",
 		},
-		Dependencies: []string{
-			"Database schema implementation",
-			"Email service configuration",
-			"Authentication middleware",
-		},
-		Timeline: "3-4 days",
+
 		TestingStrategy: []string{
 			"Unit tests for validation logic",
 			"Integration tests for database operations",
@@ -250,27 +528,13 @@ func generateTaskExamples() {
 		Status:      "in-progress",
 		Labels:      "monitoring, infrastructure, grafana",
 		Description: "Set up a comprehensive monitoring dashboard using Grafana to track application performance, system metrics, and user activity.",
-		AcceptanceCriteria: []string{
-			"Grafana instance deployed",
-			"Database performance metrics",
-			"Application error tracking",
-			"User activity metrics",
-			"Alert rules configured",
-			"Dashboard shared with team",
-			"Documentation created",
-		},
+
 		ImplementationDetails: []string{
 			"Deploy Grafana on Kubernetes",
 			"Configure Prometheus data sources",
 			"Create custom dashboards",
 			"Set up Slack/email notifications",
 		},
-		Dependencies: []string{
-			"Prometheus metrics collection",
-			"Kubernetes cluster access",
-			"Slack webhook configuration",
-		},
-		Timeline: "2-3 days",
 	}
 
 	generateFromTemplate("templates/task.md.tmpl", "task-with-parent-example.md", taskWithParentData)
@@ -386,27 +650,7 @@ func generateFeatureExamples() {
 		Status:      "planning",
 		Labels:      "feature, search, user-experience, enhancement",
 		Description: "Implement an advanced search and filtering system that allows users to find content quickly using multiple criteria, saved searches, and intelligent suggestions.",
-		UserStory: UserStory{
-			AsA:    "power user of the platform",
-			IWant:  "advanced search and filtering capabilities",
-			SoThat: "I can quickly find the specific content I'm looking for without browsing through multiple pages",
-		},
-		AcceptanceCriteria: []string{
-			"Full-text search across multiple content types",
-			"Multiple filter categories (date, author, tags, type)",
-			"Search suggestions and autocomplete",
-			"Saved search functionality",
-			"Search result ranking and sorting",
-			"Search history tracking",
-			"Export search results",
-			"Search analytics for admins",
-		},
-		BusinessValue: []string{
-			"Improved user engagement and retention",
-			"Reduced support tickets for \"can't find content\"",
-			"Better content discoverability",
-			"Increased user productivity",
-		},
+
 		ImplementationDetails: []string{
 			"Elasticsearch for search engine",
 			"Real-time indexing of content",
@@ -420,19 +664,7 @@ func generateFeatureExamples() {
 			"99.9% search service uptime",
 			"Internationalization support",
 		},
-		Dependencies: []string{
-			"Elasticsearch cluster setup",
-			"Content indexing pipeline",
-			"UI/UX design approval",
-			"Performance testing infrastructure",
-		},
-		SuccessMetrics: []string{
-			"Search usage increase by 40%",
-			"Average time to find content reduced by 60%",
-			"User satisfaction score >4.5/5",
-			"Search abandonment rate <10%",
-		},
-		Timeline: "6-8 weeks",
+
 		TestingStrategy: []string{
 			"A/B testing with user groups",
 			"Performance testing under load",
@@ -449,21 +681,7 @@ func generateFeatureExamples() {
 		Labels:      "feature, search, autocomplete, ui",
 		Parent:      "Advanced Search and Filtering System",
 		Description: "Implement intelligent autocomplete and search suggestions to help users formulate better search queries and discover relevant content.",
-		UserStory: UserStory{
-			AsA:    "user typing in the search box",
-			IWant:  "to see relevant suggestions and autocomplete options",
-			SoThat: "I can quickly find what I'm looking for without typing the full query",
-		},
-		AcceptanceCriteria: []string{
-			"Real-time search suggestions as user types",
-			"Autocomplete for search terms (minimum 2 characters)",
-			"Popular searches suggestions",
-			"Recent searches for logged-in users",
-			"Typo tolerance and spell correction",
-			"Keyboard navigation support (arrow keys, enter, escape)",
-			"Click tracking for suggestion analytics",
-			"Configurable suggestion limits",
-		},
+
 		ImplementationDetails: []string{
 			"Debounced API calls (300ms delay)",
 			"Trie data structure for efficient prefix matching",
@@ -477,18 +695,6 @@ func generateFeatureExamples() {
 			"Fuzzy matching with 2-character tolerance",
 			"Mobile-responsive design",
 		},
-		Dependencies: []string{
-			"Parent feature: Advanced Search and Filtering System",
-			"Search analytics infrastructure",
-			"A/B testing framework",
-		},
-		SuccessMetrics: []string{
-			"70% of searches use autocomplete suggestions",
-			"Search completion rate increase by 30%",
-			"Average characters typed reduced by 40%",
-			"Zero accessibility violations",
-		},
-		Timeline: "2-3 weeks",
 	}
 
 	// Standalone feature
@@ -498,27 +704,7 @@ func generateFeatureExamples() {
 		Status:      "ready",
 		Labels:      "feature, ui, theme, accessibility",
 		Description: "Add dark mode theme support across the entire application to improve user experience in low-light conditions and reduce eye strain.",
-		UserStory: UserStory{
-			AsA:    "user who works in low-light environments or has visual sensitivity",
-			IWant:  "the ability to switch to a dark theme",
-			SoThat: "I can use the application comfortably without eye strain",
-		},
-		AcceptanceCriteria: []string{
-			"Dark theme available for all UI components",
-			"Theme toggle switch in user preferences",
-			"Theme preference persisted across sessions",
-			"System theme detection and automatic switching",
-			"Smooth transitions between themes",
-			"High contrast ratios for accessibility (WCAG AA compliance)",
-			"Dark mode support for emails and notifications",
-			"Theme-aware images and graphics",
-		},
-		BusinessValue: []string{
-			"Improved user satisfaction and retention",
-			"Better accessibility compliance",
-			"Modern user interface standards",
-			"Reduced eye strain complaints",
-		},
+
 		ImplementationDetails: []string{
 			"CSS custom properties for theming",
 			"Context API for theme state management",
@@ -538,18 +724,7 @@ func generateFeatureExamples() {
 			"Brand colors adapted for dark backgrounds",
 			"User testing with accessibility users",
 		},
-		Dependencies: []string{
-			"Design system color palette update",
-			"Asset creation for dark theme variants",
-			"Accessibility audit completion",
-		},
-		SuccessMetrics: []string{
-			"30% of users adopt dark mode within 1 month",
-			"User satisfaction score increase by 0.3 points",
-			"Accessibility complaint reduction by 50%",
-			"Theme switch usage >5 times per active user",
-		},
-		Timeline: "3-4 weeks",
+
 		TestingStrategy: []string{
 			"Visual regression testing for all components",
 			"Accessibility testing with screen readers",
